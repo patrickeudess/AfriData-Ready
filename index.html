@@ -833,14 +833,14 @@ function renderEditSection() {
         html += '<p style="color:var(--primary);font-weight:600">✅ Aucune valeur manquante.</p>';
     } else {
         html += `<div class="form-row">
-            <div class="form-group"><label>Colonne :</label><select id="fill-col">${colsWithMissing.map(c => `<option value="${c}">${c} (${countMissing(c)} manquants)</option>`).join('')}</select></div>
+            <div class="form-group"><label>Colonne :</label><select id="fill-col">${colsWithMissing.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)} (${countMissing(c)} manquants)</option>`).join('')}</select></div>
             <div class="form-group"><label>Méthode :</label><select id="fill-method">
                 <option value="mean">Moyenne</option><option value="median">Médiane</option>
                 <option value="mode">Mode</option><option value="custom">Valeur personnalisée</option>
                 <option value="drop">Supprimer les lignes</option></select></div>
         </div>
         <div class="form-group"><label>Valeur personnalisée (si applicable) :</label><input id="fill-custom"></div>
-        <button class="btn btn-primary" onclick="fillMissing()">Appliquer</button>`;
+        <button class="btn btn-primary missing-action" type="button">Appliquer</button>`;
     }
     html += '</div></div>';
 
@@ -950,12 +950,18 @@ function standardizeNames() {
     renderStep();
 }
 
-function fillMissing() {
-    const col = document.getElementById('fill-col').value;
-    const method = document.getElementById('fill-method').value;
-    const custom = document.getElementById('fill-custom').value;
+function fillMissing(colArg, methodArg, customArg) {
+    const col = colArg ?? document.getElementById('fill-col')?.value;
+    const method = methodArg ?? document.getElementById('fill-method')?.value;
+    const custom = customArg ?? document.getElementById('fill-custom')?.value ?? '';
     APP.activeEditTab = 'edit-missing';
+    if (!col || !method) {
+        alert('Veuillez choisir une colonne et une méthode.');
+        restoreEditTab();
+        return;
+    }
     const missingBefore = countMissing(col);
+    const totalBefore = APP.columns.reduce((sum, c) => sum + countMissing(c), 0);
     if (missingBefore === 0) {
         alert(`Aucune valeur manquante dans "${col}".`);
         restoreEditTab();
@@ -970,8 +976,10 @@ function fillMissing() {
     if (method === 'drop') {
         const before = APP.data.length;
         APP.data = APP.data.filter(r => !isNull(r[col]));
-        addHistory('Supprimer lignes (manquants)', `${col}: ${before - APP.data.length} lignes`);
-        alert(`${before - APP.data.length} ligne(s) supprimée(s) pour "${col}".`);
+        const removed = before - APP.data.length;
+        addHistory('Supprimer lignes (manquants)', `${col}: ${removed} lignes`);
+        const totalAfter = APP.columns.reduce((sum, c) => sum + countMissing(c), 0);
+        alert(`${removed} ligne(s) supprimée(s) pour "${col}". Valeurs manquantes restantes : ${totalAfter} (${totalBefore} avant).`);
     } else {
         let fillVal;
         const vals = numericValues(col);
@@ -1000,8 +1008,9 @@ function fillMissing() {
         if (fillVal !== undefined) {
             APP.data.forEach(r => { if (isNull(r[col])) r[col] = fillVal; });
             const changed = missingBefore - countMissing(col);
+            const totalAfter = APP.columns.reduce((sum, c) => sum + countMissing(c), 0);
             addHistory(`Remplir manquants (${method})`, `${col} → ${fillVal}`);
-            alert(`${changed} valeur(s) manquante(s) remplacée(s) dans "${col}".`);
+            alert(`${changed} valeur(s) manquante(s) remplacée(s) dans "${col}". Valeurs manquantes restantes : ${totalAfter} (${totalBefore} avant).`);
         }
     }
     renderStep();
@@ -3131,6 +3140,14 @@ function renderStep() {
                 if (!confirm(message)) return;
             }
             fixOutliers(col, method);
+        });
+    });
+    document.querySelectorAll('.missing-action').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const col = document.getElementById('fill-col')?.value;
+            const method = document.getElementById('fill-method')?.value;
+            const custom = document.getElementById('fill-custom')?.value ?? '';
+            fillMissing(col, method, custom);
         });
     });
 
