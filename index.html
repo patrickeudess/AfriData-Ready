@@ -2550,8 +2550,43 @@ function renderAnalysis() {
     const numCols = APP.columns.filter(c => isNumericCol(c));
     let curMiss = 0; APP.columns.forEach(c => curMiss += countMissing(c));
     const docCount = APP.columns.filter(c => APP.variableDocs[c]).length;
+    const dupCount = countDuplicates();
+    const outlierCols = Object.keys(APP.qualityReport.outlierDetails || {}).length;
+    const missingMeta = ['title', 'author', 'description', 'license', 'contact'].filter(k => !APP.metadata[k]);
+    const sensitivePending = sensitiveColumns().filter(c => !(APP.anonymizedCols || []).includes(c));
+    const healthItems = [
+        { label: 'Complétude', value: `${Math.max(0, 100 - APP.qualityReport.missingPct).toFixed(1)}%`, ok: curMiss === 0, step: 2, detail: curMiss ? `${curMiss} valeur(s) manquante(s)` : 'Aucune valeur manquante' },
+        { label: 'Doublons', value: dupCount, ok: dupCount === 0, step: 2, detail: dupCount ? `${dupCount} ligne(s) à supprimer` : 'Aucun doublon' },
+        { label: 'Aberrantes', value: outlierCols, ok: outlierCols === 0, step: 2, detail: outlierCols ? `${outlierCols} colonne(s) à vérifier` : 'Aucune colonne signalée' },
+        { label: 'Documentation', value: `${docCount}/${APP.columns.length}`, ok: docCount === APP.columns.length, step: 3, detail: `${APP.columns.length - docCount} variable(s) restante(s)` },
+        { label: 'Métadonnées', value: `${5 - missingMeta.length}/5`, ok: missingMeta.length === 0, step: 4, detail: missingMeta.length ? `${missingMeta.join(', ')}` : 'Champs clés complets' },
+        { label: 'Sécurité', value: sensitivePending.length, ok: sensitivePending.length === 0, step: 7, detail: sensitivePending.length ? `${sensitivePending.join(', ')}` : 'Rien à pseudonymiser' }
+    ];
+    const priorityItems = healthItems.filter(x => !x.ok).slice(0, 4);
+    const readyScore = healthItems.filter(x => x.ok).length;
 
     let html = `<div class="page-header"><h2>Étape 8 : Tableau de bord AQI</h2><p>Score global, progression et visualisations de votre jeu de données</p></div>`;
+
+    html += `<div class="card" style="border-left:5px solid ${readyScore === healthItems.length ? 'var(--primary)' : 'var(--accent)'}">
+        <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:1rem">
+            <div>
+                <h3 style="margin-bottom:.25rem">Vue d'ensemble opérationnelle</h3>
+                <p style="font-size:.88rem;color:#666;margin:0">${readyScore}/${healthItems.length} indicateur(s) au vert · AQI ${aqi.total}/100 · ${aqi.total >= AQI_TARGET ? 'objectif atteint' : `${AQI_TARGET - aqi.total} point(s) à gagner`}</p>
+            </div>
+            <button class="btn btn-primary" onclick="goStep(9)">Préparer l'export</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.6rem;margin-top:1rem">
+            ${healthItems.map(item => `<div class="issue ${item.ok ? 'info' : 'warning'}" style="margin:0">
+                <strong>${item.ok ? '✅' : '⚠️'} ${item.label}</strong>
+                <div style="font-size:1.35rem;font-weight:800;margin:.2rem 0">${escapeHtml(item.value)}</div>
+                <div style="font-size:.78rem;color:#666">${escapeHtml(item.detail)}</div>
+            </div>`).join('')}
+        </div>
+        ${priorityItems.length ? `<h4 style="font-size:.9rem;margin:1rem 0 .5rem;color:#555">Priorités recommandées</h4>
+            <div style="display:flex;flex-wrap:wrap;gap:.5rem">
+                ${priorityItems.map(item => `<button class="btn btn-secondary btn-sm" onclick="goStep(${item.step})">Corriger : ${escapeHtml(item.label)}</button>`).join('')}
+            </div>` : `<p style="font-size:.86rem;color:var(--primary);font-weight:700;margin-top:1rem">Tous les indicateurs clés sont au vert. Vous pouvez exporter le data product.</p>`}
+    </div>`;
 
     // AQI
     html += `<div class="card"><h3>🏅 AfriData Quality Index (AQI)</h3>
@@ -2571,6 +2606,12 @@ function renderAnalysis() {
         html += `<h4 style="margin-top:.8rem;font-size:.9rem;color:#555">Recommandations personnalisées</h4>`;
         for (const [dim, txt] of aqi.recos) html += `<div class="issue warning" style="margin:.3rem 0">🟡 <strong>${dim} :</strong> ${txt}</div>`;
     }
+    const sortedDims = Object.entries(aqi.dims).sort((a, b) => a[1] - b[1]);
+    const dimLabels = { intrinseque: 'Qualité intrinsèque', documentation: 'Documentation', fair: 'FAIR', ai: 'AI Readiness', securite: 'Sécurité' };
+    html += `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.6rem;margin-top:.8rem">
+        <div class="issue warning" style="margin:0"><strong>Point à renforcer</strong><br>${dimLabels[sortedDims[0][0]]} : ${Math.round(sortedDims[0][1])}/100</div>
+        <div class="issue info" style="margin:0"><strong>Point fort</strong><br>${dimLabels[sortedDims[sortedDims.length - 1][0]]} : ${Math.round(sortedDims[sortedDims.length - 1][1])}/100</div>
+    </div>`;
     html += interpBox(interpAQI(aqi));
     html += `<p class="small" style="color:#999;margin-top:.6rem;font-style:italic">Évaluation interne inspirée de standards internationaux : ne constitue pas une certification officielle.</p></div>`;
 
@@ -2589,14 +2630,20 @@ function renderAnalysis() {
     ])}${interpBox(interpBeforeAfter(ini, curMiss, docCount, aqi, base))}</div>`;
 
     // Missing heatmap
-    html += `<div class="card"><h3>🗺️ Carte thermique des valeurs manquantes</h3>${svgMissingHeatmap()}${interpBox(interpMissing(APP.qualityReport))}</div>`;
+    html += `<div class="card"><h3>🗺️ Carte thermique des valeurs manquantes</h3>
+        <p style="font-size:.84rem;color:#666;margin-bottom:.6rem">Rouge = valeur manquante. Une colonne rouge signale une variable à traiter ; une ligne rouge signale un enregistrement incomplet.</p>
+        ${svgMissingHeatmap()}${interpBox(interpMissing(APP.qualityReport))}</div>`;
 
     // Distributions
     if (numCols.length) {
-        html += `<div class="card"><h3>📊 Distributions (histogrammes)</h3><div style="text-align:center">`;
+        html += `<div class="card"><h3>📊 Distributions (histogrammes)</h3>
+        <p style="font-size:.84rem;color:#666;margin-bottom:.6rem">Permet de repérer les asymétries, valeurs concentrées ou distributions atypiques avant analyse.</p>
+        <div style="text-align:center">`;
         for (const c of numCols.slice(0, 6)) html += svgHistogram(numericValues(c), c);
         html += `</div>${interpBox(interpHistograms(numCols))}</div>`;
-        html += `<div class="card"><h3>📦 Boxplots (valeurs aberrantes)</h3><div style="text-align:center">`;
+        html += `<div class="card"><h3>📦 Boxplots (valeurs aberrantes)</h3>
+        <p style="font-size:.84rem;color:#666;margin-bottom:.6rem">Les points rouges sont les valeurs détectées comme aberrantes par la règle 1,5×IQR.</p>
+        <div style="text-align:center">`;
         for (const c of numCols.slice(0, 6)) html += svgBoxplot(c);
         html += `</div>${interpBox(interpBoxplots(numCols))}</div>`;
         html += `<div class="card"><h3>🔗 Matrice de corrélation</h3>${svgCorrMatrix(numCols)}${interpBox(interpCorr(numCols))}</div>`;
