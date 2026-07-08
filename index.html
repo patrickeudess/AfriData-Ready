@@ -754,14 +754,12 @@ function renderStep2() {
                 ${od.examples.map(v => `<strong style="color:var(--danger)">${v}</strong>`).join(', ')}
                 ${od.count > 5 ? ` … et ${od.count - 5} autre(s)` : ''}
             </p>`;
-            const colArg = jsString(col);
-            const dropConfirmArg = jsString(`Supprimer les ${od.count} ligne(s) contenant une valeur aberrante de « ${col} » ?`);
             html += `<h4 style="font-size:.88rem;margin-bottom:.5rem;color:#444">Corriger en un clic :</h4>
             <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:.4rem">
-                <button class="btn btn-primary btn-sm" onclick="fixOutliers(${colArg},'cap')" title="Ramène les valeurs extrêmes aux bornes [${od.lo}, ${od.hi}]">📉 Plafonner aux bornes</button>
-                <button class="btn btn-primary btn-sm" onclick="fixOutliers(${colArg},'median')" title="Remplace chaque valeur aberrante par la médiane">📊 Remplacer par la médiane</button>
-                <button class="btn btn-secondary btn-sm" onclick="fixOutliers(${colArg},'null')" title="Vide les valeurs aberrantes (imputables ensuite)">🧩 Mettre à vide</button>
-                <button class="btn btn-danger btn-sm" onclick="if(confirm(${dropConfirmArg}))fixOutliers(${colArg},'drop')" title="Supprime les lignes contenant une valeur aberrante">🗑️ Supprimer les lignes</button>
+                <button class="btn btn-primary btn-sm outlier-action" data-col="${escapeHtml(col)}" data-method="cap" title="Ramène les valeurs extrêmes aux bornes [${od.lo}, ${od.hi}]">📉 Plafonner aux bornes</button>
+                <button class="btn btn-primary btn-sm outlier-action" data-col="${escapeHtml(col)}" data-method="median" title="Remplace chaque valeur aberrante par la médiane">📊 Remplacer par la médiane</button>
+                <button class="btn btn-secondary btn-sm outlier-action" data-col="${escapeHtml(col)}" data-method="null" title="Vide les valeurs aberrantes (imputables ensuite)">🧩 Mettre à vide</button>
+                <button class="btn btn-danger btn-sm outlier-action" data-col="${escapeHtml(col)}" data-method="drop" data-count="${od.count}" title="Supprime les lignes contenant une valeur aberrante">🗑️ Supprimer les lignes</button>
             </div>
             <p style="font-size:.78rem;color:#888;margin-top:.3rem">💡 Astuce : « Plafonner » ou « Médiane » conservent la ligne ; « Supprimer » réduit l'effectif. Si les valeurs sont réelles (cas exceptionnels), conservez-les et documentez la variable à l'étape 3.</p>
             </div>`;
@@ -3122,6 +3120,19 @@ function renderStep() {
 
     // Post-render hooks
     if (APP.step === 3 && APP.data) setTimeout(() => renderDocForm(), 50);
+    document.querySelectorAll('.outlier-action').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const col = btn.dataset.col;
+            const method = btn.dataset.method;
+            if (!col || !method) return;
+            if (method === 'drop') {
+                const count = btn.dataset.count || '';
+                const message = `Supprimer les ${count} ligne(s) contenant une valeur aberrante de "${col}" ?`;
+                if (!confirm(message)) return;
+            }
+            fixOutliers(col, method);
+        });
+    });
 
     // Drag and drop for step 1
     if (APP.step === 1) {
