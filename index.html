@@ -1026,8 +1026,9 @@ function removeDuplicates() {
 function outlierBounds(col) {
     const v = numericValues(col).sort((a, b) => a - b);
     if (v.length < 4) return null;
-    const q1 = v[Math.floor((v.length - 1) * 0.25)], q3 = v[Math.floor((v.length - 1) * 0.75)];
+    const q1 = v[Math.floor(v.length * 0.25)], q3 = v[Math.floor(v.length * 0.75)];
     const iqr = q3 - q1;
+    if (iqr <= 0) return null;
     const median = v.length % 2 ? v[(v.length - 1) / 2] : (v[v.length / 2 - 1] + v[v.length / 2]) / 2;
     return { lo: q1 - 1.5 * iqr, hi: q3 + 1.5 * iqr, median };
 }
@@ -1038,26 +1039,27 @@ function reopenOutliersTab() {
 }
 
 function fixOutliers(col, method) {
-    const b = outlierBounds(col);
-    if (!b) {
-        alert(`Impossible de traiter les valeurs aberrantes de "${col}" : pas assez de valeurs numériques.`);
-        return;
-    }
-    const isOut = x => { const n = parseFloat(x); return !isNaN(n) && (n < b.lo || n > b.hi); };
-    const affectedBefore = APP.data.filter(r => isOut(r[col])).length;
-    if (affectedBefore === 0) {
-        alert(`Aucune valeur aberrante à traiter dans "${col}".`);
-        return;
-    }
-    let affected = affectedBefore;
-    let actionLabel = '';
-    if (method === 'drop') {
-        const before = APP.data.length;
-        APP.data = APP.data.filter(r => !isOut(r[col]));
-        affected = before - APP.data.length;
-        actionLabel = 'lignes supprimées';
-        addHistory('Aberrantes : lignes supprimées', `${col} : ${affected} ligne(s)`, 'Règle 1.5×IQR');
-    } else {
+    const countCurrentOutliers = () => {
+        const b = outlierBounds(col);
+        if (!b) return 0;
+        return APP.data.filter(r => {
+            const n = parseFloat(r[col]);
+            return !isNaN(n) && (n < b.lo || n > b.hi);
+        }).length;
+    };
+    const applyOnce = () => {
+        const b = outlierBounds(col);
+        if (!b) return 0;
+        const isOut = x => {
+            const n = parseFloat(x);
+            return !isNaN(n) && (n < b.lo || n > b.hi);
+        };
+        const affectedNow = APP.data.filter(r => isOut(r[col])).length;
+        if (affectedNow === 0) return 0;
+        if (method === 'drop') {
+            APP.data = APP.data.filter(r => !isOut(r[col]));
+            return affectedNow;
+        }
         APP.data = APP.data.map(r => {
             if (!isOut(r[col])) return r;
             const nr = { ...r }, n = parseFloat(r[col]);
@@ -1066,17 +1068,48 @@ function fixOutliers(col, method) {
             else if (method === 'null') nr[col] = null;
             return nr;
         });
-        const lbl = method === 'cap' ? 'plafonnées (bornes IQR)' : method === 'median' ? 'remplacées par la médiane' : 'mises à vide';
-        actionLabel = lbl;
-        addHistory(`Aberrantes : ${lbl}`, `${col} : ${affected} valeur(s)`, 'Règle 1.5×IQR');
+        return affectedNow;
+    };
+
+    if (!outlierBounds(col)) {
+        alert(`Impossible de traiter les valeurs aberrantes de "${col}" : pas assez de valeurs num\u00e9riques.`);
+        return;
     }
-    APP.qualityReport = null;
+    const affectedBefore = countCurrentOutliers();
+    if (affectedBefore === 0) {
+        alert(`Aucune valeur aberrante \u00e0 traiter dans "${col}".`);
+        return;
+    }
+
+    let affected = 0;
+    let passes = 0;
+    const maxPasses = 20;
+    do {
+        const changed = applyOnce();
+        affected += changed;
+        passes += changed > 0 ? 1 : 0;
+        if (changed === 0) break;
+    } while (countCurrentOutliers() > 0 && passes < maxPasses);
+
+    let actionLabel = '';
+    if (method === 'drop') {
+        actionLabel = 'lignes supprim\u00e9es';
+        addHistory('Aberrantes : lignes supprim\u00e9es', `${col} : ${affected} ligne(s)`, 'R\u00e8gle 1.5\u00d7IQR');
+    } else {
+        const lbl = method === 'cap' ? 'plafonn\u00e9es (bornes IQR)' : method === 'median' ? 'remplac\u00e9es par la m\u00e9diane' : 'mises \u00e0 vide';
+        actionLabel = lbl;
+        addHistory(`Aberrantes : ${lbl}`, `${col} : ${affected} valeur(s)`, 'R\u00e8gle 1.5\u00d7IQR');
+    }
+    const afterReport = analyzeQuality();
+    const remainingCols = Object.keys(afterReport.outlierDetails || {}).length;
+    const remainingInCol = afterReport.outlierDetails?.[col]?.count || 0;
+    APP.qualityReport = afterReport;
     APP.fairScore = null;
     APP.aiScore = null;
     APP.aqiScore = null;
     APP._assistCache = null;
     if (typeof pushAqiHistory === 'function') pushAqiHistory('Aberrantes');
-    alert(`Correction appliquée à "${col}" : ${affected} ${method === 'drop' ? 'ligne(s)' : 'valeur(s)'} ${actionLabel}. La base corrigée et les exports utiliseront ces données.`);
+    alert(`Correction appliqu\u00e9e \u00e0 "${col}" : ${affected} ${method === 'drop' ? 'ligne(s)' : 'valeur(s)'} ${actionLabel}. ${remainingInCol === 0 ? 'Cette colonne ne contient plus de valeur aberrante d\u00e9tect\u00e9e.' : `Il reste ${remainingInCol} valeur(s) aberrante(s) dans cette colonne.`} Colonnes aberrantes restantes : ${remainingCols}. La base corrig\u00e9e et les exports utiliseront ces donn\u00e9es.`);
     renderStep();
     setTimeout(reopenOutliersTab, 20);
 }
