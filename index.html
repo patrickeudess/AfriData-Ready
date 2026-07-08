@@ -2568,23 +2568,30 @@ function renderAnalysis() {
     let html = `<div class="page-header"><h2>Étape 8 : Tableau de bord AQI</h2><p>Score global, progression et visualisations de votre jeu de données</p></div>`;
 
     html += `<div class="card" style="border-left:5px solid ${readyScore === healthItems.length ? 'var(--primary)' : 'var(--accent)'}">
-        <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:1rem">
-            <div>
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:1rem">
+            <div style="min-width:0">
                 <h3 style="margin-bottom:.25rem">Vue d'ensemble opérationnelle</h3>
                 <p style="font-size:.88rem;color:#666;margin:0">${readyScore}/${healthItems.length} indicateur(s) au vert · AQI ${aqi.total}/100 · ${aqi.total >= AQI_TARGET ? 'objectif atteint' : `${AQI_TARGET - aqi.total} point(s) à gagner`}</p>
             </div>
-            <button class="btn btn-primary" onclick="goStep(9)">Préparer l'export</button>
+            <button class="btn btn-primary" style="white-space:nowrap" onclick="goStep(9)">Préparer l'export</button>
         </div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.6rem;margin-top:1rem">
-            ${healthItems.map(item => `<div class="issue ${item.ok ? 'info' : 'warning'}" style="margin:0">
-                <strong>${item.ok ? '✅' : '⚠️'} ${item.label}</strong>
-                <div style="font-size:1.35rem;font-weight:800;margin:.2rem 0">${escapeHtml(item.value)}</div>
-                <div style="font-size:.78rem;color:#666">${escapeHtml(item.detail)}</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:.75rem;margin-top:1rem">
+            ${healthItems.map(item => `<div class="${item.ok ? 'issue info' : 'issue warning'}" style="margin:0;min-height:118px;padding:.85rem;display:grid;grid-template-rows:auto 1fr auto;gap:.35rem;overflow:hidden">
+                <div style="display:flex;align-items:center;gap:.45rem;min-width:0">
+                    <span aria-hidden="true">${item.ok ? '✅' : '⚠️'}</span>
+                    <strong style="font-size:.92rem;line-height:1.15;min-width:0;overflow-wrap:anywhere">${escapeHtml(item.label)}</strong>
+                </div>
+                <div style="display:flex;align-items:center;min-width:0">
+                    <span style="font-size:clamp(1.45rem,2.4vw,2rem);line-height:1;font-weight:800;color:#123;overflow-wrap:anywhere">${escapeHtml(item.value)}</span>
+                </div>
+                <div style="font-size:.78rem;line-height:1.25;color:#666;overflow-wrap:anywhere">${escapeHtml(item.detail)}</div>
             </div>`).join('')}
         </div>
-        ${priorityItems.length ? `<h4 style="font-size:.9rem;margin:1rem 0 .5rem;color:#555">Priorités recommandées</h4>
-            <div style="display:flex;flex-wrap:wrap;gap:.5rem">
-                ${priorityItems.map(item => `<button class="btn btn-secondary btn-sm" onclick="goStep(${item.step})">Corriger : ${escapeHtml(item.label)}</button>`).join('')}
+        ${priorityItems.length ? `<div style="margin-top:1rem;padding-top:.85rem;border-top:1px solid #E0F2F1">
+                <h4 style="font-size:.9rem;margin:0 0 .55rem;color:#555">Priorités recommandées</h4>
+                <div style="display:flex;flex-wrap:wrap;gap:.5rem">
+                    ${priorityItems.map(item => `<button class="btn btn-secondary btn-sm" style="white-space:normal;text-align:left" onclick="goStep(${item.step})">Corriger : ${escapeHtml(item.label)}</button>`).join('')}
+                </div>
             </div>` : `<p style="font-size:.86rem;color:var(--primary);font-weight:700;margin-top:1rem">Tous les indicateurs clés sont au vert. Vous pouvez exporter le data product.</p>`}
     </div>`;
 
