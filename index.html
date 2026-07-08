@@ -216,6 +216,7 @@ const APP = {
     aqiHistory: [],      // progression de l'AQI [{label, score}]
     anonymizedCols: [],  // colonnes sensibles pseudonymisées (gouvernance)
     activeEditTab: 'edit-cells',
+    notice: null,
     _assistCache: null
 };
 const AQI_TARGET = 90;
@@ -440,6 +441,20 @@ function escapeHtml(value) {
 }
 function jsString(value) {
     return JSON.stringify(String(value ?? ''));
+}
+function notify(message, type = 'success') {
+    APP.notice = { message, type };
+}
+function renderNotice() {
+    if (!APP.notice) return '';
+    const styles = {
+        success: 'background:#E8F5E9;border-left:5px solid var(--primary);color:#1B5E20',
+        info: 'background:#E3F2FD;border-left:5px solid #0277BD;color:#01579B',
+        warning: 'background:#FFF8E1;border-left:5px solid var(--accent);color:#5D4037'
+    };
+    return `<div class="card" style="${styles[APP.notice.type] || styles.info};margin-bottom:1rem">
+        <strong>${APP.notice.type === 'warning' ? 'Attention' : 'Action appliquée'} :</strong> ${escapeHtml(APP.notice.message)}
+    </div>`;
 }
 function addHistory(action, detail, justification) {
     const now = new Date();
@@ -979,7 +994,7 @@ function fillMissing(colArg, methodArg, customArg) {
         const removed = before - APP.data.length;
         addHistory('Supprimer lignes (manquants)', `${col}: ${removed} lignes`);
         const totalAfter = APP.columns.reduce((sum, c) => sum + countMissing(c), 0);
-        alert(`${removed} ligne(s) supprimée(s) pour "${col}". Valeurs manquantes restantes : ${totalAfter} (${totalBefore} avant).`);
+        notify(`${removed} ligne(s) supprimée(s) pour "${col}". Valeurs manquantes restantes : ${totalAfter} (${totalBefore} avant).`);
     } else {
         let fillVal;
         const vals = numericValues(col);
@@ -1010,7 +1025,7 @@ function fillMissing(colArg, methodArg, customArg) {
             const changed = missingBefore - countMissing(col);
             const totalAfter = APP.columns.reduce((sum, c) => sum + countMissing(c), 0);
             addHistory(`Remplir manquants (${method})`, `${col} → ${fillVal}`);
-            alert(`${changed} valeur(s) manquante(s) remplacée(s) dans "${col}". Valeurs manquantes restantes : ${totalAfter} (${totalBefore} avant).`);
+            notify(`${changed} valeur(s) manquante(s) remplacée(s) dans "${col}". Valeurs manquantes restantes : ${totalAfter} (${totalBefore} avant).`);
         }
     }
     renderStep();
@@ -1116,7 +1131,7 @@ function fixOutliers(col, method) {
     APP.aqiScore = null;
     APP._assistCache = null;
     if (typeof pushAqiHistory === 'function') pushAqiHistory('Aberrantes');
-    alert(`Correction appliqu\u00e9e \u00e0 "${col}" : ${affected} ${method === 'drop' ? 'ligne(s)' : 'valeur(s)'} ${actionLabel}. ${remainingInCol === 0 ? 'Cette colonne ne contient plus de valeur aberrante d\u00e9tect\u00e9e.' : `Il reste ${remainingInCol} valeur(s) aberrante(s) dans cette colonne.`} Colonnes aberrantes restantes : ${remainingCols}. La base corrig\u00e9e et les exports utiliseront ces donn\u00e9es.`);
+    notify(`Correction appliqu\u00e9e \u00e0 "${col}" : ${affected} ${method === 'drop' ? 'ligne(s)' : 'valeur(s)'} ${actionLabel}. ${remainingInCol === 0 ? 'Cette colonne ne contient plus de valeur aberrante d\u00e9tect\u00e9e.' : `Il reste ${remainingInCol} valeur(s) aberrante(s) dans cette colonne.`} Colonnes aberrantes restantes : ${remainingCols}. La base corrig\u00e9e et les exports utiliseront ces donn\u00e9es.`);
     renderStep();
     setTimeout(reopenOutliersTab, 20);
 }
@@ -1264,7 +1279,8 @@ function saveMetadata() {
         if (el) APP.metadata[f] = el.value;
     }
     scheduleAutosave();
-    alert('Métadonnées enregistrées !');
+    notify('Métadonnées enregistrées.');
+    renderStep();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1677,6 +1693,30 @@ function renderStep9() {
     </div>`;
 
     const fmtLabel = APP.inputFormat === 'xlsx' ? 'Excel' : APP.inputFormat === 'json' ? 'JSON' : 'CSV';
+    const remainingMissing = APP.qualityReport.totalMissing || 0;
+    const remainingDup = APP.qualityReport.n_duplicates || 0;
+    const remainingOutlierCols = Object.keys(APP.qualityReport.outlierDetails || {}).length;
+    const docCount = Object.keys(APP.variableDocs || {}).length;
+    const essentialMeta = ['title', 'author', 'description', 'license', 'contact'].filter(k => APP.metadata[k]);
+    const readyItems = [
+        ['Valeurs manquantes', remainingMissing === 0, remainingMissing === 0 ? 'Aucune' : `${remainingMissing} restante(s)`],
+        ['Doublons', remainingDup === 0, remainingDup === 0 ? 'Aucun' : `${remainingDup} ligne(s)`],
+        ['Colonnes aberrantes', remainingOutlierCols === 0, remainingOutlierCols === 0 ? 'Aucune' : `${remainingOutlierCols} colonne(s)`],
+        ['Variables documentées', docCount === APP.columns.length, `${docCount}/${APP.columns.length}`],
+        ['Métadonnées clés', essentialMeta.length >= 4, `${essentialMeta.length}/5`]
+    ];
+    const readyCount = readyItems.filter(x => x[1]).length;
+
+    html += `<div class="card" style="border-left:5px solid ${readyCount === readyItems.length ? 'var(--primary)' : 'var(--accent)'}">
+        <h3>Contrôle avant export</h3>
+        <p style="font-size:.88rem;color:#666;margin-bottom:.7rem">Résumé rapide de la base qui sera exportée.</p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.5rem">
+            ${readyItems.map(([label, ok, value]) => `<div class="issue ${ok ? 'info' : 'warning'}" style="margin:0">
+                <strong>${ok ? '✅' : '⚠️'} ${label}</strong><br><span style="font-size:.82rem">${value}</span>
+            </div>`).join('')}
+        </div>
+        ${readyCount === readyItems.length ? '<p style="font-size:.85rem;color:var(--primary);font-weight:700;margin-top:.7rem">La base est prête pour l’export.</p>' : '<p style="font-size:.85rem;color:#777;margin-top:.7rem">Tu peux exporter maintenant ou revenir aux étapes précédentes pour améliorer les points signalés.</p>'}
+    </div>`;
 
     html += `<div class="card"><h3>Contenu du Data Product (ZIP)</h3>
         <p style="margin-bottom:.8rem;font-size:.9rem">Les données corrigées gardent le <strong>même format que l'original (${fmtLabel})</strong>.</p>
@@ -2748,7 +2788,7 @@ function buildAssistantActions() {
     let totalMiss = 0; APP.columns.forEach(c => { const m = countMissing(c); if (m < n) totalMiss += m; });
     if (totalMiss > 0) actions.push({
         id: 'missing', icon: '🧩', label: `Imputer ${totalMiss} valeur(s) manquante(s)`,
-        why: 'Médiane pour les numériques, mode pour les catégorielles.',
+        why: emptyCols.length ? 'Après suppression des colonnes vides : médiane pour les numériques, mode pour les catégorielles.' : 'Médiane pour les numériques, mode pour les catégorielles.',
         gain: simulateAQI(mutImputeMissing) - current, auto: true, manualStep: 2
     });
 
@@ -2799,6 +2839,7 @@ function applyAssistAction(id) {
     else if (id === 'doc') { const added = mutAutoDoc(); addHistory('Assistant : variables documentées', `${added.length} suggestion(s) automatique(s)`, 'À relire à l\'étape 3'); }
     else if (id === 'license') { mutLicense(); addHistory('Assistant : licence ajoutée', 'CC-BY 4.0', 'Correction automatique'); }
     else if (id === 'anon') { const done = mutAnonymize(); addHistory('Assistant : pseudonymisation', done.join(', '), 'Valeurs remplacées par des codes (RGPD)'); }
+    notify('Correction automatique appliquée. Les scores et le rapport qualité ont été recalculés.');
     APP._assistCache = null;
     pushAqiHistory('Assistant');
     renderNav(); renderStep();
@@ -2816,6 +2857,7 @@ function applyAllAssistActions() {
     }
     addHistory('Assistant : correction automatique globale', actions.filter(a => a.auto).map(a => a.label).join(' ; '), 'Toutes les corrections auto');
     APP._assistCache = null;
+    notify('Correction globale appliquée. La base, les scores et les exports utilisent maintenant les données mises à jour.');
     pushAqiHistory('Correction globale');
     renderNav(); renderStep();
 }
@@ -3124,7 +3166,7 @@ function renderStep() {
         welcome: renderWelcome, projects: renderProjects
     };
     const showBar = APP.data && APP.data.length && (typeof APP.step === 'number' || APP.step === 'analysis');
-    container.innerHTML = (showBar ? renderObjectiveBar() : '') + renderers[APP.step]();
+    container.innerHTML = (showBar ? renderObjectiveBar() : '') + renderNotice() + renderers[APP.step]();
     updateFileInfo();
 
     // Post-render hooks
