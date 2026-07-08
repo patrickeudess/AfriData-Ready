@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AfriData Ready : From Raw Data to FAIR & AI-Ready Data</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
-<script src="libs/papaparse.min.js"></script>
-<script src="libs/xlsx.full.min.js"></script>
-<script src="libs/jszip.min.js"></script>
-<script src="libs/FileSaver.min.js"></script>
+<script src="libs/papaparse.min.js" defer></script>
+<script src="libs/xlsx.full.min.js" defer></script>
+<script src="libs/jszip.min.js" defer></script>
+<script src="libs/FileSaver.min.js" defer></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;color:#263238;background:#f6fafb;min-height:100vh;display:flex}
@@ -176,9 +176,35 @@ textarea{min-height:64px}
 .welcome-hero{grid-template-columns:1fr;text-align:left}
 .mode-grid{grid-template-columns:1fr}
 }
+
+/* Transition fluide entre étapes */
+@keyframes fadeInUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+#main-content>*{animation:fadeInUp .28s ease}
+.card{transition:box-shadow .2s,transform .2s}
+
+/* Notifications (toasts) non bloquantes */
+#toasts{position:fixed;top:1rem;right:1rem;z-index:1000;display:flex;flex-direction:column;gap:.5rem;max-width:min(360px,90vw)}
+.toast{display:flex;align-items:flex-start;gap:.6rem;background:#fff;border-left:4px solid var(--primary);border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.16);padding:.7rem .9rem;font-size:.86rem;color:#333;animation:toastIn .25s ease;cursor:pointer}
+.toast.success{border-left-color:#2E7D32}.toast.error{border-left-color:#C62828}.toast.info{border-left-color:#1565C0}
+.toast .ico{font-size:1.1rem;line-height:1.2}
+.toast.hide{animation:toastOut .25s ease forwards}
+@keyframes toastIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:none}}
+@keyframes toastOut{to{opacity:0;transform:translateX(20px)}}
+@media(max-width:600px){#toasts{left:1rem;right:1rem;max-width:none}}
+
+/* Overlay de chargement */
+#loading-overlay{position:fixed;inset:0;z-index:1100;background:rgba(255,255,255,.78);backdrop-filter:blur(2px);display:none;align-items:center;justify-content:center}
+#loading-overlay.show{display:flex}
+.spinner{width:46px;height:46px;border:4px solid #E0F0E1;border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite}
+.loading-box{text-align:center;color:var(--primary);font-weight:600}
+.loading-box .msg{margin-top:.8rem;font-size:.9rem}
+@keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
+
+<div id="toasts"></div>
+<div id="loading-overlay"><div class="loading-box"><div class="spinner"></div><div class="msg" id="loading-msg">Chargement…</div></div></div>
 
 <header class="topbar">
     <img class="topbar-brand-logo" src="assets/logo_afridata_ready_white.png" alt="AfriData Ready">
@@ -202,6 +228,33 @@ textarea{min-height:64px}
 <div class="main" id="main-content"></div>
 
 <script>
+// ═══════════════════════════════════════════════════════════════
+// UX : notifications non bloquantes + indicateur de chargement
+// ═══════════════════════════════════════════════════════════════
+function toast(message, type = 'info', ms = 3200) {
+    const c = document.getElementById('toasts');
+    if (!c) { return; }
+    const el = document.createElement('div');
+    el.className = 'toast ' + type;
+    const ico = type === 'success' ? '✅' : type === 'error' ? '⚠️' : 'ℹ️';
+    el.innerHTML = `<span class="ico">${ico}</span><span>${message}</span>`;
+    const dismiss = () => { el.classList.add('hide'); setTimeout(() => el.remove(), 250); };
+    el.onclick = dismiss;
+    c.appendChild(el);
+    setTimeout(dismiss, ms);
+}
+
+function showLoading(msg) {
+    const o = document.getElementById('loading-overlay');
+    if (!o) return;
+    document.getElementById('loading-msg').textContent = msg || 'Traitement…';
+    o.classList.add('show');
+}
+function hideLoading() {
+    const o = document.getElementById('loading-overlay');
+    if (o) o.classList.remove('show');
+}
+
 // ═══════════════════════════════════════════════════════════════
 // APPLICATION STATE
 // ═══════════════════════════════════════════════════════════════
@@ -341,23 +394,34 @@ function handleFile(file) {
     APP.sheetNames = [];
     APP.activeSheet = '';
     const reader = new FileReader();
+    if (['csv', 'xlsx', 'xls', 'json'].includes(ext)) showLoading('Lecture de « ' + file.name + ' »…');
 
     if (ext === 'csv') {
         reader.onload = e => {
-            const result = Papa.parse(e.target.result, { header: true, skipEmptyLines: true, dynamicTyping: true });
-            APP.columns = result.meta.fields || [];
-            APP.data = result.data;
-            APP.originalData = JSON.parse(JSON.stringify(result.data));
-            onDataLoaded();
+            try {
+                const result = Papa.parse(e.target.result, { header: true, skipEmptyLines: true, dynamicTyping: true });
+                APP.columns = result.meta.fields || [];
+                APP.data = result.data;
+                APP.originalData = JSON.parse(JSON.stringify(result.data));
+                onDataLoaded();
+                toast(`« ${file.name} » importé : ${APP.data.length} lignes, ${APP.columns.length} colonnes.`, 'success');
+            } catch (err) { toast('Erreur de lecture CSV : ' + err.message, 'error'); }
+            finally { hideLoading(); }
         };
+        reader.onerror = () => { hideLoading(); toast('Impossible de lire le fichier.', 'error'); };
         reader.readAsText(file);
     } else if (ext === 'xlsx' || ext === 'xls') {
         reader.onload = e => {
-            const wb = XLSX.read(e.target.result, { type: 'array' });
-            APP.workbook = wb;
-            APP.sheetNames = wb.SheetNames;
-            loadSheet(wb.SheetNames[0]);
+            try {
+                const wb = XLSX.read(e.target.result, { type: 'array' });
+                APP.workbook = wb;
+                APP.sheetNames = wb.SheetNames;
+                loadSheet(wb.SheetNames[0]);
+                toast(`« ${file.name} » importé : ${APP.data.length} lignes, ${APP.columns.length} colonnes.`, 'success');
+            } catch (err) { toast('Erreur de lecture Excel : ' + err.message, 'error'); }
+            finally { hideLoading(); }
         };
+        reader.onerror = () => { hideLoading(); toast('Impossible de lire le fichier.', 'error'); };
         reader.readAsArrayBuffer(file);
     } else if (ext === 'json') {
         reader.onload = e => {
@@ -368,11 +432,15 @@ function handleFile(file) {
                 APP.data = arr;
                 APP.originalData = JSON.parse(JSON.stringify(arr));
                 onDataLoaded();
-            } catch (err) { alert('Erreur JSON : ' + err.message); }
+                toast(`« ${file.name} » importé : ${APP.data.length} lignes, ${APP.columns.length} colonnes.`, 'success');
+            } catch (err) { toast('Erreur JSON : ' + err.message, 'error'); }
+            finally { hideLoading(); }
         };
+        reader.onerror = () => { hideLoading(); toast('Impossible de lire le fichier.', 'error'); };
         reader.readAsText(file);
     } else {
-        alert('Format non supporté. Utilisez CSV, Excel ou JSON.');
+        hideLoading();
+        toast('Format non supporté. Utilisez CSV, Excel ou JSON.', 'error');
     }
 }
 
@@ -1231,19 +1299,19 @@ function fillMissing(colArg, methodArg, customArg) {
     const custom = customArg ?? document.getElementById('fill-custom')?.value ?? '';
     APP.activeEditTab = 'edit-missing';
     if (!col || !method) {
-        alert('Veuillez choisir une colonne et une méthode.');
+        toast('Veuillez choisir une colonne et une méthode.');
         restoreEditTab();
         return;
     }
     const missingBefore = countMissing(col);
     const totalBefore = APP.columns.reduce((sum, c) => sum + countMissing(c), 0);
     if (missingBefore === 0) {
-        alert(`Aucune valeur manquante dans "${col}".`);
+        toast(`Aucune valeur manquante dans "${col}".`);
         restoreEditTab();
         return;
     }
     if (method === 'custom' && custom.trim() === '') {
-        alert('Veuillez saisir une valeur personnalisée non vide.');
+        toast('Veuillez saisir une valeur personnalisée non vide.');
         restoreEditTab();
         return;
     }
@@ -1260,7 +1328,7 @@ function fillMissing(colArg, methodArg, customArg) {
         let fillVal;
         const vals = numericValues(col);
         if ((method === 'mean' || method === 'median') && vals.length === 0) {
-            alert(`Cette méthode n'est pas applicable : "${col}" ne contient pas de valeurs numériques.`);
+            toast(`Cette méthode n'est pas applicable : "${col}" ne contient pas de valeurs numériques.`);
             restoreEditTab();
             return;
         }
@@ -1275,7 +1343,7 @@ function fillMissing(colArg, methodArg, customArg) {
             APP.data.forEach(r => { if (!isNull(r[col])) freq[r[col]] = (freq[r[col]] || 0) + 1; });
             fillVal = Object.entries(freq).sort((a, b) => b[1] - a[1])[0]?.[0];
             if (fillVal === undefined) {
-                alert(`Le mode n'est pas applicable : "${col}" ne contient aucune valeur non manquante.`);
+                toast(`Le mode n'est pas applicable : "${col}" ne contient aucune valeur non manquante.`);
                 restoreEditTab();
                 return;
             }
@@ -1313,12 +1381,12 @@ function reopenSimilarTab() {
 
 function applySimilarValues(col, values, target) {
     if (!col || !Array.isArray(values) || !values.length) {
-        alert('Aucun groupe de valeurs à harmoniser.');
+        toast('Aucun groupe de valeurs à harmoniser.');
         return;
     }
     target = String(target ?? '').trim();
     if (!target) {
-        alert('Veuillez saisir une valeur cible non vide.');
+        toast('Veuillez saisir une valeur cible non vide.');
         return;
     }
     pushUndoSnapshot(`Harmoniser les valeurs similaires de ${col}`);
@@ -1332,7 +1400,7 @@ function applySimilarValues(col, values, target) {
     });
     if (changed === 0) {
         APP.undoStack.pop();
-        alert(`Aucune valeur à modifier dans "${col}".`);
+        toast(`Aucune valeur à modifier dans "${col}".`);
         return;
     }
     addHistory('Harmoniser valeurs similaires', `${col} : ${values.join(', ')} → ${target} (${changed} ligne(s))`, 'Correction des catégories incohérentes');
@@ -1396,12 +1464,12 @@ function fixOutliers(col, method) {
     };
 
     if (!outlierBounds(col)) {
-        alert(`Impossible de traiter les valeurs aberrantes de "${col}" : pas assez de valeurs num\u00e9riques.`);
+        toast(`Impossible de traiter les valeurs aberrantes de "${col}" : pas assez de valeurs num\u00e9riques.`);
         return;
     }
     const affectedBefore = countCurrentOutliers();
     if (affectedBefore === 0) {
-        alert(`Aucune valeur aberrante \u00e0 traiter dans "${col}".`);
+        toast(`Aucune valeur aberrante \u00e0 traiter dans "${col}".`);
         return;
     }
 
@@ -2438,6 +2506,7 @@ function exportCertificate() {
 }
 
 function exportZip() {
+    showLoading('Génération du dossier (Data Product)…');
     const zip = new JSZip();
     if (APP.inputFormat === 'xlsx') {
         const el = document.getElementById('export-styling');
@@ -2509,7 +2578,9 @@ function exportZip() {
 
     zip.generateAsync({ type: 'blob' }).then(blob => {
         saveAs(blob, `afridata_ready_${new Date().toISOString().slice(0,10)}.zip`);
-    });
+        hideLoading();
+        toast('Dossier complet téléchargé. 🎉', 'success');
+    }).catch(err => { hideLoading(); toast('Erreur lors de la génération : ' + err.message, 'error'); });
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -3455,7 +3526,7 @@ async function createProject(name, description, fromCurrentWork) {
 
 async function openProject(id) {
     const p = await dbGet(id);
-    if (!p) { alert('Projet introuvable.'); return; }
+    if (!p) { toast('Projet introuvable.', 'error'); return; }
     APP.mode = 'project';
     APP.projectId = p.id;
     APP.projectName = p.name;
@@ -3482,7 +3553,7 @@ function saveAsProject() {
 // ── Export / import de projet (fichier .afridata, transférable) ──
 async function exportProjectFile(id) {
     const p = await dbGet(id);
-    if (!p) { alert('Projet introuvable.'); return; }
+    if (!p) { toast('Projet introuvable.', 'error'); return; }
     const payload = { format: 'afridata-project', version: 1, exportedAt: new Date().toISOString(), project: p };
     const blob = new Blob([JSON.stringify(payload)], { type: 'application/json;charset=utf-8;' });
     const safe = String(p.name || 'projet').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'projet';
@@ -3501,9 +3572,9 @@ function importProjectFile(file) {
             p.name = (p.name || 'Projet importé') + ' (importé)';
             p.updatedAt = new Date().toISOString();
             await dbPut(p);
-            alert(`Projet « ${p.name} » importé avec succès.`);
+            toast(`Projet « ${p.name} » importé avec succès.`, 'success');
             loadProjectsList();
-        } catch (err) { alert('Import impossible : ' + err.message); }
+        } catch (err) { toast('Import impossible : ' + err.message, 'error'); }
     };
     reader.readAsText(file);
 }
@@ -3656,7 +3727,7 @@ function renderStep() {
             if (!row) return;
             let values = [];
             try { values = JSON.parse(row.dataset.values || '[]'); }
-            catch (e) { alert('Impossible de lire le groupe de valeurs.'); return; }
+            catch (e) { toast('Impossible de lire le groupe de valeurs.', 'error'); return; }
             const target = row.querySelector('.similar-target')?.value ?? '';
             applySimilarValues(row.dataset.col, values, target);
         });
