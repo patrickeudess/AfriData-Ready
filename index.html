@@ -990,7 +990,7 @@ function renderStep2() {
     const nOutlierCols = Object.keys(report.outlierDetails || {}).length;
     const nSimilarGroups = Object.values(report.similarValueDetails || {}).reduce((s, groups) => s + groups.length, 0);
 
-    let html = `<div class="page-header"><h2>Étape 2 : Qualité des données</h2><p>Diagnostiquer, comprendre, puis corriger — automatiquement ou à la main</p></div>`;
+    let html = `<div class="page-header"><h2>Étape 2 : Qualité des données</h2><p>Diagnostiquer, comprendre, puis corriger : automatiquement ou à la main</p></div>`;
     html += `<div class="metrics">
         <div class="metric"><div class="val">${report.totalMissing} <span style="font-size:.9rem">(${report.missingPct}%)</span></div><div class="label">Valeurs manquantes</div></div>
         <div class="metric"><div class="val">${report.n_duplicates}</div><div class="label">Doublons</div></div>
@@ -1813,7 +1813,7 @@ function renderStep6() {
     // Critères FAIR réellement externes (impossibles hors publication)
     html += `<div class="card" style="background:#FFF8E1;border-left:4px solid var(--accent)">
         <h3>🌐 Critères nécessitant une publication (hors application)</h3>
-        <p style="font-size:.85rem;color:#555;margin-bottom:.5rem">Certains principes FAIR — <strong>identifiant pérenne (DOI)</strong>, <strong>accès via un protocole standard</strong> et <strong>indexation dans un catalogue</strong> — ne peuvent pas être satisfaits par un outil local : ils exigent le dépôt du jeu de données sur un entrepôt.</p>
+        <p style="font-size:.85rem;color:#555;margin-bottom:.5rem">Certains principes FAIR : <strong>identifiant pérenne (DOI)</strong>, <strong>accès via un protocole standard</strong> et <strong>indexation dans un catalogue</strong>, ne peuvent pas être satisfaits par un outil local : ils exigent le dépôt du jeu de données sur un entrepôt.</p>
         <p style="font-size:.85rem;color:#555;margin-bottom:.5rem">✅ <strong>Bonne nouvelle :</strong> AfriData Ready génère déjà le fichier <strong>metadata_datacite.xml</strong> (à l'export) qui permet d'obtenir un DOI. Pour finaliser :</p>
         <ul style="font-size:.83rem;color:#555;margin-left:1.1rem">
             <li>Déposez le dossier ZIP sur <strong>Zenodo</strong>, <strong>Dataverse</strong> ou <strong>OSF</strong> (gratuit) → vous obtenez un DOI pérenne et une URL d'accès stable.</li>
