@@ -62,6 +62,10 @@ Le workflow GitHub Pages est défini dans `.github/workflows/pages.yml`. À chaq
 
 Le code est publié sous licence MIT. Voir `LICENSE`.
 
+## Contact
+
+Patrick-Eudess Zatty ALLA - allaeudess@gmail.com
+
 ## Références
 
 - Wilkinson et al. (2016) - FAIR Principles

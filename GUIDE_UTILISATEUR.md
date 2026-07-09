@@ -43,3 +43,7 @@ Un fichier d'exemple est disponible dans `samples/afridata_ready_exemple_qualite
 ## Avertissement
 
 AfriData Ready fournit une aide à la préparation et à l'évaluation des données. Les scores produits sont des évaluations internes et ne constituent pas une certification officielle.
+
+## Contact
+
+Patrick-Eudess Zatty ALLA - allaeudess@gmail.com
