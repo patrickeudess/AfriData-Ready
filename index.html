@@ -25,6 +25,10 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;color:#263238;bac
 /* Sidebar */
 .sidebar{width:260px;background:linear-gradient(180deg,#00345F 0%,#00527A 58%,#007C89 100%);color:#fff;padding:1.5rem 1rem;position:fixed;top:0;left:0;bottom:0;overflow-y:auto;z-index:100}
 .brand-logo{display:block;width:100%;max-width:220px;margin:0 auto .8rem;background:#fff;border-radius:8px;padding:.45rem;box-shadow:0 8px 22px rgba(0,0,0,.18)}
+.lang-switch{display:flex;gap:.3rem;justify-content:center;margin-bottom:1rem}
+.lang-btn{background:rgba(255,255,255,.14);color:rgba(255,255,255,.8);border:1px solid rgba(255,255,255,.25);border-radius:6px;padding:.2rem .7rem;font-size:.78rem;font-weight:700;cursor:pointer;transition:all .2s}
+.lang-btn:hover{background:rgba(255,255,255,.25);color:#fff}
+.lang-btn.active{background:#fff;color:var(--primary)}
 .sidebar h1{font-size:1.3rem;text-align:center;margin-bottom:.3rem}
 .sidebar .slogan{font-size:.75rem;text-align:center;opacity:.8;font-style:italic;margin-bottom:1.5rem}
 .sidebar .nav-item{display:flex;align-items:center;gap:.6rem;padding:.6rem .8rem;border-radius:8px;cursor:pointer;margin-bottom:.3rem;font-size:.85rem;transition:all .2s;color:rgba(255,255,255,.7)}
@@ -234,6 +238,7 @@ textarea{min-height:64px}
 <nav class="sidebar" id="sidebar">
     <img class="brand-logo" src="assets/logo_afridata_ready_white.png" alt="AfriData Ready">
     <p class="slogan">From Raw Data to FAIR & AI-Ready Data</p>
+    <div id="lang-switch" class="lang-switch"></div>
     <div id="nav-items"></div>
     <div id="aux-nav" style="margin-top:1rem;padding-top:.8rem;border-top:1px solid rgba(255,255,255,.2)"></div>
     <div class="file-info" id="file-info" style="display:none">
@@ -304,10 +309,88 @@ async function promptInstall() {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// INTERNATIONALISATION (FR / EN)
+// ═══════════════════════════════════════════════════════════════
+const I18N = {
+    fr: {
+        steps: ['Importer les données', 'Qualité des données', 'Documenter les variables', 'Métadonnées', 'Score FAIR', 'AI Readiness', 'Gouvernance', 'Tableau de bord AQI', 'Exporter'],
+        aux: { home: 'Accueil', projects: 'Mes projets', reference: 'Référentiel utilisé' },
+        btnBack: 'Retour', btnNext: 'Suivant',
+        install: "Installer l'application",
+        saveAsProject: 'Enregistrer ce travail comme projet',
+        saveNow: 'Enregistrer maintenant',
+        headers: {
+            1: ['Étape 1 : Importer les données', 'Déposez votre fichier de données brut pour commencer'],
+            2: ['Étape 2 : Qualité des données', 'Diagnostiquer, comprendre, puis corriger : automatiquement ou à la main'],
+            3: ['Étape 3 : Documenter les variables', 'Décrivez chaque variable pour améliorer la réutilisabilité'],
+            4: ['Étape 4 : Métadonnées du jeu de données', 'Informations générales sur votre jeu de données'],
+            5: ['Étape 5 : Conformité FAIR', 'Findable · Accessible · Interoperable · Reusable'],
+            6: ['Étape 6 : AI Readiness', "Évaluation de la préparation à l'intelligence artificielle"],
+            7: ['Étape 7 : Gouvernance', 'Sécurité, confidentialité, provenance et traçabilité (RGPD · ISO 25012 · DAMA-DMBOK)'],
+            8: ['Étape 8 : Tableau de bord AQI', 'Score global, progression et visualisations de votre jeu de données'],
+            9: ['Étape 9 : Exporter le Data Product', 'Téléchargez votre jeu de données documenté, certifié et conforme'],
+            referentiel: ['📖 Référentiel utilisé', 'Standards internationaux mobilisés par AfriData Ready'],
+            projects: ['📂 Mes projets', 'Vos projets sont stockés localement dans ce navigateur']
+        },
+        welcome: {
+            subtitle: "Transformez un fichier brut en base propre, documentée et prête pour l'analyse ou l'IA.",
+            flow: 'Flux de travail', flow1: '1. Importer un fichier CSV, Excel ou JSON', flow2: '2. Corriger la qualité des données', flow3: '3. Documenter, scorer et exporter',
+            quickTitle: 'Démarrage rapide', quickDesc: 'Idéal pour traiter un fichier en une session et obtenir rapidement une base corrigée avec ses rapports.',
+            quickP1: '✓ Import direct du fichier', quickP2: '✓ Corrections qualité guidées', quickP3: '✓ Export final complet', quickBtn: 'Commencer →',
+            projTitle: 'Projet AfriData Ready', projDesc: 'Recommandé pour un travail en plusieurs étapes avec sauvegarde locale et reprise du traitement plus tard.',
+            projP1: '✓ Sauvegarde automatique locale', projP2: '✓ Historique des corrections', projP3: '✓ Import/export de projets', projBtn: 'Ouvrir mes projets →',
+            trust: '🔒 Vos données restent sur votre ordinateur : aucun envoi sur Internet.'
+        }
+    },
+    en: {
+        steps: ['Import data', 'Data quality', 'Document variables', 'Metadata', 'FAIR score', 'AI Readiness', 'Governance', 'AQI dashboard', 'Export'],
+        aux: { home: 'Home', projects: 'My projects', reference: 'Standards used' },
+        btnBack: 'Back', btnNext: 'Next',
+        install: 'Install the app',
+        saveAsProject: 'Save this work as a project',
+        saveNow: 'Save now',
+        headers: {
+            1: ['Step 1: Import data', 'Drop your raw data file to get started'],
+            2: ['Step 2: Data quality', 'Diagnose, understand, then fix: automatically or by hand'],
+            3: ['Step 3: Document variables', 'Describe each variable to improve reusability'],
+            4: ['Step 4: Dataset metadata', 'General information about your dataset'],
+            5: ['Step 5: FAIR compliance', 'Findable · Accessible · Interoperable · Reusable'],
+            6: ['Step 6: AI Readiness', 'Assessment of readiness for artificial intelligence'],
+            7: ['Step 7: Governance', 'Security, privacy, provenance and traceability (GDPR · ISO 25012 · DAMA-DMBOK)'],
+            8: ['Step 8: AQI dashboard', 'Overall score, progress and visualisations of your dataset'],
+            9: ['Step 9: Export the Data Product', 'Download your documented, certified, compliant dataset'],
+            referentiel: ['📖 Standards used', 'International standards leveraged by AfriData Ready'],
+            projects: ['📂 My projects', 'Your projects are stored locally in this browser']
+        },
+        welcome: {
+            subtitle: 'Turn a raw file into a clean, documented dataset ready for analysis or AI.',
+            flow: 'Workflow', flow1: '1. Import a CSV, Excel or JSON file', flow2: '2. Fix data quality', flow3: '3. Document, score and export',
+            quickTitle: 'Quick start', quickDesc: 'Ideal to process a file in one session and quickly get a corrected dataset with its reports.',
+            quickP1: '✓ Direct file import', quickP2: '✓ Guided quality fixes', quickP3: '✓ Complete final export', quickBtn: 'Start →',
+            projTitle: 'AfriData Ready Project', projDesc: 'Recommended for multi-step work with local saving and resuming later.',
+            projP1: '✓ Automatic local saving', projP2: '✓ Correction history', projP3: '✓ Project import/export', projBtn: 'Open my projects →',
+            trust: '🔒 Your data stays on your computer: nothing is sent to the Internet.'
+        }
+    }
+};
+function L() { return I18N[APP && APP.lang === 'en' ? 'en' : 'fr']; }
+function stepHeaderHTML(key) {
+    const h = L().headers[key] || I18N.fr.headers[key];
+    return `<div class="page-header"><h2>${h[0]}</h2><p>${h[1]}</p></div>`;
+}
+function setLang(lang) {
+    APP.lang = (lang === 'en') ? 'en' : 'fr';
+    try { localStorage.setItem('afridata_lang', APP.lang); } catch (e) {}
+    document.documentElement.lang = APP.lang;
+    renderNav(); renderStep();
+}
+
+// ═══════════════════════════════════════════════════════════════
 // APPLICATION STATE
 // ═══════════════════════════════════════════════════════════════
 const APP = {
     step: 1,
+    lang: (() => { try { return localStorage.getItem('afridata_lang') === 'en' ? 'en' : 'fr'; } catch (e) { return 'fr'; } })(),
     data: null,
     originalData: null,
     initialStats: null,
@@ -360,7 +443,7 @@ const STEPS = [
 // ═══════════════════════════════════════════════════════════════
 function renderNav() {
     const c = document.getElementById('nav-items');
-    c.innerHTML = STEPS.map((name, i) => {
+    c.innerHTML = L().steps.map((name, i) => {
         const n = i + 1;
         let cls = 'nav-item';
         if (n === APP.step) cls += ' active';
@@ -372,12 +455,18 @@ function renderNav() {
         </div>`;
     }).join('');
 
+    // Sélecteur de langue
+    const langEl = document.getElementById('lang-switch');
+    if (langEl) langEl.innerHTML =
+        `<button class="lang-btn ${APP.lang === 'fr' ? 'active' : ''}" onclick="setLang('fr')">FR</button>
+         <button class="lang-btn ${APP.lang === 'en' ? 'active' : ''}" onclick="setLang('en')">EN</button>`;
+
     const aux = document.getElementById('aux-nav');
     if (aux) {
         const auxItems = [
-            ['welcome', '🏠', 'Accueil', false],
-            ['projects', '📂', 'Mes projets', false],
-            ['referentiel', '📖', 'Référentiel utilisé', false]
+            ['welcome', '🏠', L().aux.home, false],
+            ['projects', '📂', L().aux.projects, false],
+            ['referentiel', '📖', L().aux.reference, false]
         ];
         let h = auxItems.map(([id, icon, label, dis]) => {
             let cls = 'nav-item'; if (id === APP.step) cls += ' active';
@@ -390,18 +479,18 @@ function renderNav() {
             h += `<div style="margin-top:.8rem;padding:.6rem .8rem;background:rgba(255,255,255,.12);border-radius:8px;font-size:.78rem">
                 <p style="margin:0 0 .3rem"><strong>📂 ${String(APP.projectName).replace(/</g, '&lt;')}</strong></p>
                 <p id="save-indicator" style="margin:0 0 .5rem;opacity:.8">${APP.lastSaved ? '💾 Sauvegardé à ' + APP.lastSaved : 'Non sauvegardé'}</p>
-                <button class="btn btn-sm" style="background:#fff;color:#1B5E20;width:100%" onclick="saveProject(false)">💾 Enregistrer maintenant</button>
+                <button class="btn btn-sm" style="background:#fff;color:#1B5E20;width:100%" onclick="saveProject(false)">💾 ${L().saveNow}</button>
             </div>`;
         } else if (APP.mode === 'quick' && APP.data) {
             h += `<div style="margin-top:.8rem">
-                <button class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#fff;width:100%;border:1px dashed rgba(255,255,255,.5)" onclick="saveAsProject()">💾 Enregistrer ce travail comme projet</button>
+                <button class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#fff;width:100%;border:1px dashed rgba(255,255,255,.5)" onclick="saveAsProject()">💾 ${L().saveAsProject}</button>
             </div>`;
         }
 
         // Bouton d'installation (PWA) : visible uniquement si le navigateur le propose
         if (deferredInstallPrompt) {
             h += `<div style="margin-top:.6rem">
-                <button class="btn btn-sm" style="background:var(--accent);color:#fff;width:100%" onclick="promptInstall()">📲 Installer l'application</button>
+                <button class="btn btn-sm" style="background:var(--accent);color:#fff;width:100%" onclick="promptInstall()">📲 ${L().install}</button>
             </div>`;
         }
         aux.innerHTML = h;
@@ -776,10 +865,14 @@ function restoreEditTab() {
     const tab = [...document.querySelectorAll('.tab')].find(t => t.dataset.editTab === id || (t.getAttribute('onclick') || '').includes(`'${id}'`));
     if (tab) tab.classList.add('active');
 }
-function navButtons(prev, next, nextLabel = 'Suivant →') {
+function navButtons(prev, next, nextLabel = null) {
+    // En anglais, on affiche le nom traduit de l'étape suivante ; en français, le libellé fourni.
+    let fwd = nextLabel;
+    if (APP.lang === 'en' && typeof next === 'number' && L().steps[next - 1]) fwd = L().steps[next - 1] + ' →';
+    if (!fwd) fwd = L().btnNext + ' →';
     return `<div class="nav-buttons">
-        <div>${prev ? `<button class="btn btn-secondary" onclick="goStep(${prev})">← Retour</button>` : ''}</div>
-        <div>${next ? `<button class="btn btn-primary" onclick="goStep(${next})">${nextLabel}</button>` : ''}</div>
+        <div>${prev ? `<button class="btn btn-secondary" onclick="goStep(${prev})">← ${L().btnBack}</button>` : ''}</div>
+        <div>${next ? `<button class="btn btn-primary" onclick="goStep(${next})">${fwd}</button>` : ''}</div>
     </div>`;
 }
 
@@ -787,7 +880,7 @@ function navButtons(prev, next, nextLabel = 'Suivant →') {
 // STEP 1: IMPORT
 // ═══════════════════════════════════════════════════════════════
 function renderStep1() {
-    let html = `<div class="page-header"><h2>Étape 1 : Importer les données</h2><p>Déposez votre fichier de données brut pour commencer</p></div>`;
+    let html = `${stepHeaderHTML(1)}`;
 
     html += `<div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()">
         <span class="icon">📂</span>
@@ -1034,7 +1127,7 @@ function renderStep2() {
     const nOutlierCols = Object.keys(report.outlierDetails || {}).length;
     const nSimilarGroups = Object.values(report.similarValueDetails || {}).reduce((s, groups) => s + groups.length, 0);
 
-    let html = `<div class="page-header"><h2>Étape 2 : Qualité des données</h2><p>Diagnostiquer, comprendre, puis corriger : automatiquement ou à la main</p></div>`;
+    let html = `${stepHeaderHTML(2)}`;
     html += `<div class="metrics">
         <div class="metric"><div class="val">${report.totalMissing} <span style="font-size:.9rem">(${report.missingPct}%)</span></div><div class="label">Valeurs manquantes</div></div>
         <div class="metric"><div class="val">${report.n_duplicates}</div><div class="label">Doublons</div></div>
@@ -1585,7 +1678,7 @@ function renderStep4() {
     const nTotal = APP.columns.length;
     const ratio = nTotal > 0 ? nDoc / nTotal : 0;
 
-    let html = `<div class="page-header"><h2>Étape 3 : Documenter les variables</h2><p>Décrivez chaque variable pour améliorer la réutilisabilité</p></div>`;
+    let html = `${stepHeaderHTML(3)}`;
     html += `<div class="card"><div class="progress-bar"><div class="fill" style="width:${ratio * 100}%;background:var(--primary)"></div></div>
         <p style="text-align:center;font-size:.85rem;margin-top:.3rem"><strong>${nDoc}/${nTotal}</strong> variables documentées</p></div>`;
 
@@ -1687,7 +1780,7 @@ function renderStep5() {
     ];
     const filled = fields.filter(f => m[f[0]]).length;
 
-    let html = `<div class="page-header"><h2>Étape 4 : Métadonnées du jeu de données</h2><p>Informations générales sur votre jeu de données</p></div>`;
+    let html = `${stepHeaderHTML(4)}`;
     html += `<div class="card"><div class="progress-bar"><div class="fill" style="width:${pct(filled, fields.length)}%;background:var(--primary)"></div></div>
         <p style="text-align:center;font-size:.85rem;margin-top:.3rem"><strong>${filled}/${fields.length}</strong> champs renseignés</p></div>`;
 
@@ -1808,7 +1901,7 @@ function renderStep6() {
     const fair = computeFAIR();
     APP.fairScore = fair;
 
-    let html = `<div class="page-header"><h2>Étape 5 : Conformité FAIR</h2><p>Findable · Accessible · Interoperable · Reusable</p></div>`;
+    let html = `${stepHeaderHTML(5)}`;
 
     const levelColor = scoreColor(fair.total / 100);
     html += `<div class="card"><div class="score-display">
@@ -1941,7 +2034,7 @@ function renderStep7() {
     const ai = computeAI();
     APP.aiScore = ai;
 
-    let html = `<div class="page-header"><h2>Étape 6 : AI Readiness</h2><p>Évaluation de la préparation à l'intelligence artificielle</p></div>`;
+    let html = `${stepHeaderHTML(6)}`;
 
     html += `<div class="card"><div class="score-display">
         <div class="score-big" style="color:${ai.level[1]}">${ai.total}</div>
@@ -2022,7 +2115,7 @@ function renderGovernance() {
     const sens = sensitiveColumns();
     const pending = sens.filter(c => !(APP.anonymizedCols || []).includes(c));
 
-    let html = `<div class="page-header"><h2>Étape 7 : Gouvernance</h2><p>Sécurité, confidentialité, provenance et traçabilité (RGPD · ISO 25012 · DAMA-DMBOK)</p></div>`;
+    let html = `${stepHeaderHTML(7)}`;
 
     html += `<div class="metrics">
         <div class="metric" style="border-top-color:${aqi.dims.securite >= 80 ? 'var(--primary)' : 'var(--danger)'}"><div class="val" style="color:${aqi.dims.securite >= 80 ? 'var(--primary)' : 'var(--danger)'}">${Math.round(aqi.dims.securite)}/100</div><div class="label">Sécurité & confidentialité</div></div>
@@ -2181,7 +2274,7 @@ function renderStep9() {
     APP.aqiScore = computeAQI();
     const aqi = APP.aqiScore;
 
-    let html = `<div class="page-header"><h2>Étape 9 : Exporter le Data Product</h2><p>Téléchargez votre jeu de données documenté, certifié et conforme</p></div>`;
+    let html = `${stepHeaderHTML(9)}`;
 
     html += `<div class="metrics">
         <div class="metric" style="border-top-color:${aqi.level[1]}"><div class="val" style="color:${aqi.level[1]}">${aqi.total}/100</div><div class="label">AQI · ${aqi.level[0]}</div></div>
@@ -3073,7 +3166,7 @@ function renderAnalysis() {
     const priorityItems = healthItems.filter(x => !x.ok).slice(0, 4);
     const readyScore = healthItems.filter(x => x.ok).length;
 
-    let html = `<div class="page-header"><h2>Étape 8 : Tableau de bord AQI</h2><p>Score global, progression et visualisations de votre jeu de données</p></div>`;
+    let html = `${stepHeaderHTML(8)}`;
 
     html += `<div class="card" style="border-left:5px solid ${readyScore === healthItems.length ? 'var(--primary)' : 'var(--accent)'}">
         <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:1rem">
@@ -3180,7 +3273,7 @@ function renderAnalysis() {
 // PAGE : RÉFÉRENTIEL UTILISÉ
 // ═══════════════════════════════════════════════════════════════
 function renderReferentiel() {
-    let html = `<div class="page-header"><h2>📖 Référentiel utilisé</h2><p>Standards internationaux mobilisés par AfriData Ready</p></div>`;
+    let html = `${stepHeaderHTML("referentiel")}`;
     const stds = [
         ['ISO 8000', 'Qualité des données', 'Dimensions de qualité et gouvernance (complétude, exactitude, cohérence).'],
         ['ISO/IEC 25012', 'Modèle de qualité des données', 'Caractéristiques de qualité inhérentes et dépendantes du système.'],
@@ -3656,54 +3749,55 @@ function startQuick() {
 
 // ── Écran d'accueil : choix du mode ──
 function renderWelcome() {
+    const w = L().welcome;
     return `<div class="page-header welcome-hero">
         <div>
             <h2>AfriData Ready</h2>
-            <p>Transformez un fichier brut en base propre, documentée et prête pour l'analyse ou l'IA.</p>
+            <p>${w.subtitle}</p>
         </div>
         <div class="welcome-panel">
-            <strong>Flux de travail</strong>
-            <span>1. Importer un fichier CSV, Excel ou JSON</span>
-            <span>2. Corriger la qualité des données</span>
-            <span>3. Documenter, scorer et exporter</span>
+            <strong>${w.flow}</strong>
+            <span>${w.flow1}</span>
+            <span>${w.flow2}</span>
+            <span>${w.flow3}</span>
         </div>
     </div>
     <div class="mode-grid">
         <div class="card mode-card" onclick="startQuick()">
             <div>
                 <div class="mode-icon">⚡</div>
-                <h3>Démarrage rapide</h3>
-                <p>Idéal pour traiter un fichier en une session et obtenir rapidement une base corrigée avec ses rapports.</p>
+                <h3>${w.quickTitle}</h3>
+                <p>${w.quickDesc}</p>
                 <div class="mode-points">
-                    <span>✓ Import direct du fichier</span>
-                    <span>✓ Corrections qualité guidées</span>
-                    <span>✓ Export final complet</span>
+                    <span>${w.quickP1}</span>
+                    <span>${w.quickP2}</span>
+                    <span>${w.quickP3}</span>
                 </div>
             </div>
-            <button class="btn btn-primary">Commencer →</button>
+            <button class="btn btn-primary">${w.quickBtn}</button>
         </div>
         <div class="card mode-card" onclick="goStep('projects')">
             <div>
                 <div class="mode-icon">📂</div>
-                <h3>Projet AfriData Ready</h3>
-                <p>Recommandé pour un travail en plusieurs étapes avec sauvegarde locale et reprise du traitement plus tard.</p>
+                <h3>${w.projTitle}</h3>
+                <p>${w.projDesc}</p>
                 <div class="mode-points">
-                    <span>✓ Sauvegarde automatique locale</span>
-                    <span>✓ Historique des corrections</span>
-                    <span>✓ Import/export de projets</span>
+                    <span>${w.projP1}</span>
+                    <span>${w.projP2}</span>
+                    <span>${w.projP3}</span>
                 </div>
             </div>
-            <button class="btn btn-accent">Ouvrir mes projets →</button>
+            <button class="btn btn-accent">${w.projBtn}</button>
         </div>
     </div>
-    <p class="trust-note">🔒 Vos données restent sur votre ordinateur : aucun envoi sur Internet.</p>`;
+    <p class="trust-note">${w.trust}</p>`;
 }
 
 // ── Page : liste des projets ──
 function renderProjects() {
     // Le contenu réel est chargé de façon asynchrone
     setTimeout(loadProjectsList, 30);
-    return `<div class="page-header"><h2>📂 Mes projets</h2><p>Vos projets sont stockés localement dans ce navigateur</p></div>
+    return `${stepHeaderHTML("projects")}
     <div class="card"><h3>➕ Nouveau projet</h3>
         <div class="form-row">
             <div class="form-group"><label>Nom du projet :</label><input id="new-prj-name" placeholder="ex : Enquête ménages 2026"></div>
@@ -3820,6 +3914,7 @@ function renderStep() {
 }
 
 // Init : écran d'accueil (choix du mode)
+try { document.documentElement.lang = APP.lang; } catch (e) {}
 APP.step = 'welcome';
 renderNav();
 renderStep();
