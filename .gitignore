@@ -5,3 +5,8 @@ node_modules/
 package.json
 package-lock.json
 .codex_spreadsheet/
+.env
+.env.*
+!.env.example
+supabase/.branches
+supabase/.temp
