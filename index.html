@@ -411,7 +411,7 @@ const I18N = {
             projTitle: 'Projet AfriData Ready', projDesc: 'Recommandé pour un travail en plusieurs étapes avec sauvegarde locale et reprise du traitement plus tard.',
             projP1: '✓ Sauvegarde automatique locale', projP2: '✓ Historique des corrections', projP3: '✓ Import/export de projets', projBtn: 'Ouvrir mes projets →',
             proTitle: 'Version Pro pilote', proDesc: "Assistant IA pour expliquer, prioriser et rédiger la documentation du jeu de données.",
-            proP1: '✓ Résumé sécurisé du dataset', proP2: '✓ Recommandations prêtes à présenter', proP3: '✓ Branchable Supabase/OpenRouter', proBtn: 'Découvrir Pro →',
+            proP1: '✓ Résumé sécurisé du jeu de données', proP2: '✓ Recommandations prêtes à présenter', proP3: '✓ Rapport Pro téléchargeable', proBtn: 'Découvrir Pro →',
             trust: '🔒 Vos données restent sur votre ordinateur : aucun envoi sur Internet.',
             feat1Ico: '🔒', feat1T: '100% local', feat1D: 'Vos fichiers ne quittent jamais votre navigateur. Aucun serveur, fonctionne hors-ligne.',
             feat2Ico: '🎯', feat2T: 'Score AQI guidé', feat2D: 'Un score sur 100 et un assistant qui propose les corrections pour atteindre la qualité visée.',
@@ -469,7 +469,7 @@ const I18N = {
             projTitle: 'AfriData Ready Project', projDesc: 'Recommended for multi-step work with local saving and resuming later.',
             projP1: '✓ Automatic local saving', projP2: '✓ Correction history', projP3: '✓ Project import/export', projBtn: 'Open my projects →',
             proTitle: 'Pro pilot version', proDesc: 'AI assistant to explain, prioritize and draft dataset documentation.',
-            proP1: '✓ Safe dataset summary', proP2: '✓ Presentation-ready recommendations', proP3: '✓ Supabase/OpenRouter ready', proBtn: 'Explore Pro →',
+            proP1: '✓ Safe dataset summary', proP2: '✓ Presentation-ready recommendations', proP3: '✓ Downloadable Pro report', proBtn: 'Explore Pro →',
             trust: '🔒 Your data stays on your computer: nothing is sent to the Internet.',
             feat1Ico: '🔒', feat1T: '100% local', feat1D: 'Your files never leave your browser. No server, works offline.',
             feat2Ico: '🎯', feat2T: 'Guided AQI score', feat2D: 'A score out of 100 and an assistant that suggests the fixes to reach your target quality.',
@@ -1035,8 +1035,32 @@ function renderDataStateBar() {
         </div>
         <div class="btn-group">
             <button class="btn btn-secondary btn-sm" onclick="goToLineage()">Voir l'historique</button>
+            ${APP.proPilotEnabled ? `<button class="btn btn-secondary btn-sm" onclick="goStep('pro')">✨ Assistant Pro</button>` : ''}
             <button class="btn btn-primary btn-sm" onclick="goStep(9)">Préparer l'export</button>
         </div>
+    </div>`;
+}
+
+function renderProContextCard(context = 'quality') {
+    if (!APP.proPilotEnabled || !APP.data) return '';
+    const copy = context === 'dashboard'
+        ? {
+            title: "Besoin d'un avis avant l'export ?",
+            text: "L'assistant Pro lit le résumé de qualité déjà calculé par AfriData Ready et vous aide à décider quoi corriger, quoi documenter et quoi présenter dans un rapport.",
+            action: "Ouvrir l'assistant Pro"
+        }
+        : {
+            title: 'Assistant Pro disponible',
+            text: "Après le diagnostic qualité, utilisez l'assistant pour demander : que corriger en priorité, comment résumer le fichier, quels risques signaler ou comment rédiger la note méthodologique.",
+            action: "Demander un conseil Pro"
+        };
+    return `<div class="card" style="border-left:5px solid var(--primary-light);display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
+        <div style="min-width:240px;flex:1">
+            <span class="pro-badge">Pro pilote</span>
+            <h3 style="margin:.45rem 0 .25rem">${copy.title}</h3>
+            <p style="margin:0;color:var(--text-muted);font-size:.9rem">${copy.text}</p>
+        </div>
+        <button class="btn btn-primary" onclick="goStep('pro')">${copy.action}</button>
     </div>`;
 }
 function pct(a, b) { return b > 0 ? Math.round(a / b * 1000) / 10 : 0; }
@@ -1325,6 +1349,8 @@ function renderStep2() {
         <div class="metric"><div class="val">${nSimilarGroups}</div><div class="label">Valeurs similaires</div></div>
         <div class="metric"><div class="val">${report.issues.length}</div><div class="label">Problèmes totaux</div></div>
     </div>`;
+
+    html += renderProContextCard('quality');
 
     html += `<div class="tab-scope"><div class="tabs">
         <div class="tab active" data-edit-tab="q-issues" onclick="showEditTab('q-issues',this)">🔍 Problèmes (${report.issues.length})</div>
@@ -3491,7 +3517,10 @@ function renderAnalysis() {
                 <h3 style="margin-bottom:.25rem">Vue d'ensemble opérationnelle</h3>
                 <p style="font-size:.88rem;color:#666;margin:0">${readyScore}/${healthItems.length} indicateur(s) au vert · AQI ${aqi.total}/100 · ${aqi.total >= AQI_TARGET ? 'objectif atteint' : `${AQI_TARGET - aqi.total} point(s) à gagner`}</p>
             </div>
-            <button class="btn btn-primary" style="white-space:nowrap" onclick="goStep(9)">Préparer l'export</button>
+            <div class="btn-group" style="justify-content:flex-end">
+                ${APP.proPilotEnabled ? `<button class="btn btn-secondary" style="white-space:nowrap" onclick="goStep('pro')">✨ Assistant Pro</button>` : ''}
+                <button class="btn btn-primary" style="white-space:nowrap" onclick="goStep(9)">Préparer l'export</button>
+            </div>
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:.75rem;margin-top:1rem">
             ${healthItems.map(item => `<div class="${item.ok ? 'issue info' : 'issue warning'}" style="margin:0;min-height:118px;padding:.85rem;display:grid;grid-template-rows:auto 1fr auto;gap:.35rem;overflow:hidden">
@@ -3512,6 +3541,8 @@ function renderAnalysis() {
                 </div>
             </div>` : `<p style="font-size:.86rem;color:var(--primary);font-weight:700;margin-top:1rem">Tous les indicateurs clés sont au vert. Vous pouvez exporter le data product.</p>`}
     </div>`;
+
+    html += renderProContextCard('dashboard');
 
     // AQI
     html += `<div class="card"><h3>🏅 AfriData Quality Index (AQI)</h3>
@@ -4543,38 +4574,30 @@ function renderPro() {
                     <span class="pro-badge" style="background:#E8F7F8;color:var(--primary);border-color:#BDECEF">${escapeHtml(PRO_PROFILE_LABELS[APP.proProfile] || PRO_PROFILE_LABELS.general)}</span>
                 </div>
                 <h3 style="border:none;margin:.6rem 0 .25rem">Assistant IA pour qualité, documentation et rapport</h3>
-                <p style="color:var(--text-muted);font-size:.9rem;max-width:820px">Cette page prépare la future offre Pro : analyse métier, rapport prêt à présenter, résumé sécurisé du jeu de données et appel Supabase/OpenRouter sans exposer la clé IA.</p>
+                <p style="color:var(--text-muted);font-size:.9rem;max-width:820px">Utilisez-le après l'import et le diagnostic qualité pour savoir quoi corriger, comment présenter les résultats et générer un rapport Pro.</p>
             </div>
-            <button class="btn btn-secondary" onclick="goStep(1)">Importer un fichier</button>
+            <button class="btn btn-secondary" onclick="goStep(${hasData ? 2 : 1})">${hasData ? 'Retour à la qualité' : 'Importer un fichier'}</button>
         </div>
     </div>
 
     <div class="pro-grid">
         <div>
             <div class="card">
-                <h3>1. Configuration du backend Pro</h3>
+                <h3>Comment l'utiliser</h3>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:.7rem">
+                    <div class="issue info" style="margin:0"><strong>1. Importer</strong><br>Chargez un fichier puis consultez la qualité des données.</div>
+                    <div class="issue info" style="margin:0"><strong>2. Corriger</strong><br>Traitez les manquants, doublons, valeurs similaires et aberrantes.</div>
+                    <div class="issue info" style="margin:0"><strong>3. Demander conseil</strong><br>Choisissez un profil métier et posez une question à l'assistant.</div>
+                    <div class="issue info" style="margin:0"><strong>4. Exporter</strong><br>Téléchargez le rapport Pro ou incluez-le dans le package final.</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>1. Profil et question</h3>
                 <div class="form-group">
                     <label>Profil métier</label>
                     <select id="pro-profile" onchange="setProProfile(this.value)">${profileOptions}</select>
                 </div>
-                <div class="form-group">
-                    <label>Endpoint Supabase Edge Function</label>
-                    <input id="pro-endpoint" value="${escapeHtml(APP.proEndpoint)}" placeholder="${DEFAULT_PRO_ENDPOINT}">
-                </div>
-                <div class="form-group">
-                    <label>Modèle OpenRouter</label>
-                    <input id="pro-model" value="${escapeHtml(APP.proModel)}" placeholder="openai/gpt-4o-mini">
-                </div>
-                <div class="btn-group">
-                    <button class="btn btn-primary" onclick="saveProConfig()">Enregistrer la configuration</button>
-                    <button class="btn btn-secondary" onclick="APP.proEndpoint='';try{localStorage.setItem('afridata_pro_endpoint','__local__')}catch(e){};renderStep()">Mode local</button>
-                    <button class="btn btn-secondary" onclick="APP.proEndpoint=DEFAULT_PRO_ENDPOINT;try{localStorage.setItem('afridata_pro_endpoint',DEFAULT_PRO_ENDPOINT)}catch(e){};renderStep()">Endpoint AfriData</button>
-                </div>
-                <p style="font-size:.78rem;color:var(--text-muted);margin-top:.7rem">Sans endpoint, l'assistant utilise une analyse locale. Avec Supabase, seul un résumé sécurisé est envoyé par défaut.</p>
-            </div>
-
-            <div class="card">
-                <h3>2. Question à poser à l'assistant</h3>
                 <div style="display:flex;gap:.45rem;flex-wrap:wrap;margin-bottom:.8rem">${quickButtons}</div>
                 <div class="form-group">
                     <textarea id="pro-question" rows="4" placeholder="Ex : Que dois-je corriger en priorité avant de présenter ce fichier ?"></textarea>
@@ -4588,7 +4611,7 @@ function renderPro() {
             </div>
 
             <div class="card">
-                <h3>3. Réponse Pro</h3>
+                <h3>2. Réponse Pro</h3>
                 ${renderProAnswer()}
             </div>
         </div>
@@ -4608,11 +4631,19 @@ function renderPro() {
                 `<p style="font-size:.9rem;color:var(--text-muted)">Aucun fichier importé. Importez un jeu de données pour produire un résumé Pro.</p>`}
             </div>
             <div class="card">
-                <h3>Fonctions Pro prévues</h3>
-                <div class="issue info">✨ Diagnostic expliqué en langage clair</div>
-                <div class="issue info">📖 Brouillon de dictionnaire de données</div>
-                <div class="issue info">📋 Résumé exécutif pour rapport</div>
-                <div class="issue info">🏢 Profils métier : santé, éducation, ONG, recherche</div>
+                <h3>Quand l'utiliser ?</h3>
+                <div class="issue info">Après l'étape Qualité, pour prioriser les corrections restantes.</div>
+                <div class="issue info">Sur le tableau de bord AQI, pour préparer une synthèse de présentation.</div>
+                <div class="issue info">Avant l'export, pour générer un texte de rapport ou une note méthodologique.</div>
+            </div>
+            <details class="card">
+                <summary style="cursor:pointer;font-weight:700;color:var(--primary)">Paramètres techniques verrouillés</summary>
+                <p style="font-size:.82rem;color:var(--text-muted);margin:.8rem 0">Ces réglages sont masqués pour les utilisateurs. En version pilote, l'assistant utilise la configuration AfriData Ready ; si le service IA est indisponible, l'application bascule sur une analyse locale.</p>
+                <div class="issue info" style="margin:.4rem 0">Statut : ${APP.proEndpoint ? 'IA AfriData connectée' : 'mode local'}</div>
+                <div class="btn-group" style="margin-top:.7rem">
+                    <button class="btn btn-secondary btn-sm" onclick="APP.proEndpoint=DEFAULT_PRO_ENDPOINT;try{localStorage.setItem('afridata_pro_endpoint',DEFAULT_PRO_ENDPOINT)}catch(e){};renderStep()">Réactiver l'IA AfriData</button>
+                    <button class="btn btn-secondary btn-sm" onclick="APP.proEndpoint='';try{localStorage.setItem('afridata_pro_endpoint','__local__')}catch(e){};renderStep()">Utiliser le mode local</button>
+                </div>
             </div>
             <details class="card">
                 <summary style="cursor:pointer;font-weight:700;color:var(--primary)">Voir le prompt préparé</summary>
