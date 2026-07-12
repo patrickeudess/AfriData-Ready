@@ -509,6 +509,25 @@ function setLang(lang) {
     renderNav(); renderStep();
 }
 
+const PRO_PILOT_KEY = 'afridata_pro_pilot_enabled';
+function isProPilotEnabled() {
+    try {
+        const params = new URLSearchParams(window.location.search || '');
+        const token = params.get('pro') || params.get('pro_pilot');
+        if (token === 'patrick') {
+            localStorage.setItem(PRO_PILOT_KEY, '1');
+            return true;
+        }
+        if (token === 'off') {
+            localStorage.removeItem(PRO_PILOT_KEY);
+            return false;
+        }
+        return localStorage.getItem(PRO_PILOT_KEY) === '1';
+    } catch (e) {
+        return false;
+    }
+}
+
 // ═══════════════════════════════════════════════════════════════
 // APPLICATION STATE
 // ═══════════════════════════════════════════════════════════════
@@ -545,6 +564,7 @@ const APP = {
     anonymizedCols: [],  // colonnes sensibles pseudonymisées (gouvernance)
     activeEditTab: 'edit-cells',
     notice: null,
+    proPilotEnabled: isProPilotEnabled(),
     proEndpoint: (() => { try { return localStorage.getItem('afridata_pro_endpoint') || ''; } catch (e) { return ''; } })(),
     proModel: (() => { try { return localStorage.getItem('afridata_pro_model') || 'openai/gpt-4o-mini'; } catch (e) { return 'openai/gpt-4o-mini'; } })(),
     proAnswer: '',
@@ -598,10 +618,10 @@ function renderNav() {
         const auxItems = [
             ['welcome', '🏠', L().aux.home, false],
             ['projects', '📂', L().aux.projects, false],
-            ['pro', '✨', L().aux.pro, false],
             ['referentiel', '📖', L().aux.reference, false],
             ['about', 'ℹ️', L().aux.about, false]
         ];
+        if (APP.proPilotEnabled) auxItems.splice(2, 0, ['pro', '✨', L().aux.pro, false]);
         let h = auxItems.map(([id, icon, label, dis]) => {
             let cls = 'nav-item'; if (id === APP.step) cls += ' active';
             return `<div class="${cls}" onclick="${dis ? '' : `goStep('${id}')`}" style="${dis ? 'opacity:.4;cursor:default' : ''}">
@@ -640,6 +660,10 @@ function toggleSidebar(force) {
 }
 
 function goStep(n) {
+    if (n === 'pro' && !APP.proPilotEnabled) {
+        toast('La version Pro est en pilote privé pour le moment.', 'info', 4500);
+        n = 'welcome';
+    }
     if (APP.mode === null && typeof n === 'number') APP.mode = 'quick';
     APP.step = n;
     renderNav();
@@ -4051,6 +4075,23 @@ function startQuick() {
 // ── Écran d'accueil : choix du mode ──
 function renderWelcome() {
     const w = L().welcome;
+    const proCard = APP.proPilotEnabled ? `
+        <div class="card mode-card" onclick="goStep('pro')">
+            <div>
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin-bottom:.3rem">
+                    <div class="mode-icon mode-icon-proj">✨</div>
+                    <span class="pro-badge">Pro</span>
+                </div>
+                <h3>${w.proTitle}</h3>
+                <p>${w.proDesc}</p>
+                <div class="mode-points">
+                    <span>${w.proP1}</span>
+                    <span>${w.proP2}</span>
+                    <span>${w.proP3}</span>
+                </div>
+            </div>
+            <button class="btn btn-primary btn-block">${w.proBtn}</button>
+        </div>` : '';
     return `<div class="page-header welcome-hero">
         <div>
             <h2>AfriData Ready</h2>
@@ -4093,22 +4134,7 @@ function renderWelcome() {
             </div>
             <button class="btn btn-outline btn-block">${w.projBtn}</button>
         </div>
-        <div class="card mode-card" onclick="goStep('pro')">
-            <div>
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin-bottom:.3rem">
-                    <div class="mode-icon mode-icon-proj">✨</div>
-                    <span class="pro-badge">Pro</span>
-                </div>
-                <h3>${w.proTitle}</h3>
-                <p>${w.proDesc}</p>
-                <div class="mode-points">
-                    <span>${w.proP1}</span>
-                    <span>${w.proP2}</span>
-                    <span>${w.proP3}</span>
-                </div>
-            </div>
-            <button class="btn btn-primary btn-block">${w.proBtn}</button>
-        </div>
+        ${proCard}
     </div>
     <div class="welcome-feature-grid">
         <div class="welcome-feature"><div class="wf-ico">${w.feat1Ico}</div><h4>${w.feat1T}</h4><p>${w.feat1D}</p></div>
@@ -4426,6 +4452,7 @@ function renderPro() {
 // ═══════════════════════════════════════════════════════════════
 function renderStep() {
     const container = document.getElementById('main-content');
+    if (APP.step === 'pro' && !APP.proPilotEnabled) APP.step = 'welcome';
     const renderers = {
         1: renderStep1, 2: renderStep2, 3: renderStep4, 4: renderStep5,
         5: renderStep6, 6: renderStep7, 7: renderGovernance, 8: renderAnalysis, 9: renderStep9,
@@ -4433,7 +4460,8 @@ function renderStep() {
         welcome: renderWelcome, projects: renderProjects
     };
     const showBar = APP.data && APP.data.length && (typeof APP.step === 'number' || APP.step === 'analysis');
-    container.innerHTML = (showBar ? renderObjectiveBar() : '') + (showBar ? renderDataStateBar() : '') + renderUndoToolbar() + renderNotice() + renderers[APP.step]();
+    const renderer = renderers[APP.step] || renderWelcome;
+    container.innerHTML = (showBar ? renderObjectiveBar() : '') + (showBar ? renderDataStateBar() : '') + renderUndoToolbar() + renderNotice() + renderer();
     updateFileInfo();
 
     // Post-render hooks
